@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<!--
+  OPNsense Firewall Rules — VM-01 (OPNsense 24.x)
+  TFG: Arquitectura Zero Trust | TechSecure Solutions S.L.
+  Importar en: Firewall > Rules > Import
+
+  Política base: deny-by-default (drop implícito).
+  Solo se definen reglas de permiso explícito (pass).
+-->
+<opnsense>
+<filter>
+
+  <!-- ═══ INTERFAZ LAN (VLAN 10 — Empleados) ═══════════════════════ -->
+
+  <!-- LAN-001: Acceso LDAP/Kerberos FreeIPA -->
+  <rule>
+    <type>pass</type>
+    <interface>lan</interface>
+    <ipprotocol>inet</ipprotocol>
+    <protocol>tcp</protocol>
+    <source><network>lan</network></source>
+    <destination>
+      <address>10.10.20.10</address>
+      <port>389,636,88</port>
+    </destination>
+    <descr>LAN-001: FreeIPA LDAP/LDAPS/Kerberos</descr>
+  </rule>
+
+  <!-- LAN-002: Agentes Wazuh -->
+  <rule>
+    <type>pass</type>
+    <interface>lan</interface>
+    <protocol>tcp</protocol>
+    <source><network>lan</network></source>
+    <destination>
+      <address>10.10.20.20</address>
+      <port>1514,1515</port>
+    </destination>
+    <descr>LAN-002: Wazuh agentes TCP</descr>
+  </rule>
+
+  <!-- LAN-003: Navegación web -->
+  <rule>
+    <type>pass</type>
+    <interface>lan</interface>
+    <protocol>tcp</protocol>
+    <source><network>lan</network></source>
+    <destination><any/><port>80,443</port></destination>
+    <descr>LAN-003: HTTP/HTTPS salida Internet</descr>
+  </rule>
+
+  <!-- LAN-004: DNS FreeIPA -->
+  <rule>
+    <type>pass</type>
+    <interface>lan</interface>
+    <protocol>udp</protocol>
+    <source><network>lan</network></source>
+    <destination><address>10.10.20.10</address><port>53</port></destination>
+    <descr>LAN-004: DNS a FreeIPA</descr>
+  </rule>
+
+  <!-- LAN-BLOCK: Bloqueo VLAN10 → VLAN99 -->
+  <rule>
+    <type>block</type>
+    <interface>lan</interface>
+    <source><network>lan</network></source>
+    <destination><network>10.10.99.0/24</network></destination>
+    <descr>LAN-BLOCK: Clientes no acceden a MGMT</descr>
+  </rule>
+
+  <!-- ═══ INTERFAZ MGMT (VLAN 99 — Gestión) ════════════════════════ -->
+
+  <!-- MGMT-001: Administración WebUI y SSH -->
+  <rule>
+    <type>pass</type>
+    <interface>opt3</interface>
+    <protocol>tcp</protocol>
+    <source><network>opt3</network></source>
+    <destination><any/><port>22,443,55000</port></destination>
+    <descr>MGMT-001: SSH, HTTPS, Wazuh API</descr>
+  </rule>
+
+  <!-- MGMT-002: ICMP diagnóstico -->
+  <rule>
+    <type>pass</type>
+    <interface>opt3</interface>
+    <protocol>icmp</protocol>
+    <source><network>opt3</network></source>
+    <destination><any/></destination>
+    <descr>MGMT-002: ICMP diagnóstico desde MGMT</descr>
+  </rule>
+
+  <!-- ═══ CANALES SYSLOG (VLAN 20 interna) ═════════════════════════ -->
+
+  <!-- SYSLOG-001: OPNsense → Wazuh Manager 514/UDP -->
+  <rule>
+    <type>pass</type>
+    <interface>opt1</interface>
+    <protocol>udp</protocol>
+    <source><address>10.10.20.1</address></source>
+    <destination><address>10.10.20.20</address><port>514</port></destination>
+    <descr>SYSLOG-001: OPNsense → Wazuh Manager 514/UDP</descr>
+  </rule>
+
+  <!-- SYSLOG-002: OPNsense → Rsyslog/MariaDB 514/UDP -->
+  <rule>
+    <type>pass</type>
+    <interface>opt1</interface>
+    <protocol>udp</protocol>
+    <source><address>10.10.20.1</address></source>
+    <destination><address>10.10.20.30</address><port>514</port></destination>
+    <descr>SYSLOG-002: OPNsense → Rsyslog/MariaDB 514/UDP</descr>
+  </rule>
+
+  <!-- ═══ VPN WireGuard (WAN) ══════════════════════════════════════ -->
+
+  <!-- VPN-001: WireGuard 51820/UDP entrada -->
+  <rule>
+    <type>pass</type>
+    <interface>wan</interface>
+    <protocol>udp</protocol>
+    <source><any/></source>
+    <destination><address>WAN_IP</address><port>51820</port></destination>
+    <descr>VPN-001: WireGuard 51820/UDP entrada</descr>
+  </rule>
+
+</filter>
+
+<!-- ═══ NAT — Masquerade WAN ═══════════════════════════════════════ -->
+<nat>
+  <outbound>
+    <mode>hybrid</mode>
+    <rule>
+      <interface>wan</interface>
+      <source><network>10.10.10.0/24</network></source>
+      <destination><any/></destination>
+      <target>interface-address</target>
+      <descr>NAT MASQUERADE — VLAN10 Empleados</descr>
+    </rule>
+    <rule>
+      <interface>wan</interface>
+      <source><network>10.10.20.0/24</network></source>
+      <destination><any/></destination>
+      <target>interface-address</target>
+      <descr>NAT MASQUERADE — VLAN20 Servidores</descr>
+    </rule>
+  </outbound>
+</nat>
+
+</opnsense>

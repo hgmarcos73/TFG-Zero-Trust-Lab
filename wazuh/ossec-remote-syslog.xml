@@ -1,0 +1,26 @@
+<!--
+  ossec-remote-syslog.xml — Bloques a inyectar en /var/ossec/etc/ossec.conf
+  VM-03 (Wazuh Manager 4.7.5)
+
+  1. Recepción syslog 514/UDP desde OPNsense
+  2. Active-response contra fuerza bruta SSH (regla 100001)
+-->
+
+<!-- ═══ BLOQUE 1: Recepción remota syslog ═══════════════════════════ -->
+<!-- Añadir dentro de <ossec_config> -->
+<remote>
+  <connection>syslog</connection>
+  <port>514</port>
+  <protocol>udp</protocol>
+  <allowed-ips>10.10.20.1</allowed-ips>    <!-- OPNsense VLAN 20 -->
+</remote>
+
+<!-- ═══ BLOQUE 2: Active Response — firewall-drop ═══════════════════ -->
+<!-- Añadir dentro de <ossec_config> -->
+<active-response>
+  <command>firewall-drop</command>
+  <location>local</location>
+  <rules_id>100001</rules_id>
+  <timeout>600</timeout>                    <!-- Bloqueo 10 minutos -->
+  <white_list>10.10.99.0/24</white_list>    <!-- Excluir VLAN gestión (H-02) -->
+</active-response>

@@ -1,0 +1,35 @@
+<!--
+  local_rules.xml — Reglas personalizadas Wazuh
+  Ubicación en contenedor: /var/ossec/ruleset/rules/local_rules.xml
+  VM-03 (Wazuh Manager 4.7.5)
+
+  Regla 100001: Fuerza bruta SSH — dispara active-response (firewall-drop)
+  Regla 100002: Escaneo de puertos — alerta complementaria al IDS perimetral
+-->
+<group name="local,custom,">
+
+  <!-- Regla 100001 — Fuerza bruta SSH (Nivel 10)
+       Dispara active-response: bloqueo IP durante 600 s.
+       Condición: ≥ 6 eventos de regla 5760 (auth failure) en 60 segundos.
+       MITRE: T1110.001 (Brute Force: Password Guessing) -->
+  <rule id="100001" level="10" frequency="6" timeframe="60">
+    <if_matched_sid>5760</if_matched_sid>
+    <description>Ataque de fuerza bruta SSH detectado (>5 intentos en 60s)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Regla 100002 — Escaneo de puertos (Nivel 8)
+       Complementa Suricata IDS monitorizando umbrales anómalos de conexión.
+       Condición: ≥ 50 eventos de conexión rechazada en 10 segundos.
+       MITRE: T1046 (Network Service Discovery) -->
+  <rule id="100002" level="8" frequency="50" timeframe="10">
+    <if_matched_sid>5710</if_matched_sid>
+    <description>Escaneo de puertos detectado (>50 paquetes en 10s)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+  </rule>
+
+</group>

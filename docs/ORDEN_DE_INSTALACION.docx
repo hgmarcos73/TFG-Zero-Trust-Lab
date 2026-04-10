@@ -1,0 +1,1260 @@
+**ORDEN DE INSTALACIÓN Y CONFIGURACIÓN --- LABORATORIO ZERO TRUST**
+
+**FASE 0 --- PREPARACIÓN DEL HOST (antes de crear ninguna VM)**
+
+**Paso 0.1 --- Verificar VT-x habilitado**
+
+Desde PowerShell en Windows:
+
+powershell
+
+Get-WmiObject -Class Win32_Processor \| Select-Object -Property Name,
+VirtualizationFirmwareEnabled
+
+\`\`\`
+
+El resultado debe mostrar \`VirtualizationFirmwareEnabled: True\`. Si
+muestra \`False\`, hay que entrar en la BIOS y habilitar Intel VT-x o
+AMD-V antes de continuar.
+
+\*\*Paso 0.2 --- Configurar los 5 switches virtuales\*\*
+
+En VMware: \*\*Edit → Virtual Network Editor → Change Settings\*\*
+
+Crear en este orden exacto:
+
+\| VMnet \| Tipo \| Subred \| Máscara \| DHCP \|
+
+\|\-\--\|\-\--\|\-\--\|\-\--\|\-\--\|
+
+\| VMnet0 \| Bridged (automático) \| --- \| --- \| No aplica \|
+
+\| VMnet1 \| Host-only \| 10.10.10.0 \| 255.255.255.0 \|
+\*\*Desactivar\*\* \|
+
+\| VMnet2 \| Host-only \| 10.10.20.0 \| 255.255.255.0 \|
+\*\*Desactivar\*\* \|
+
+\| VMnet3 \| Host-only \| 10.10.30.0 \| 255.255.255.0 \|
+\*\*Desactivar\*\* \|
+
+\| VMnet4 \| Host-only \| 10.10.99.0 \| 255.255.255.0 \|
+\*\*Desactivar\*\* \|
+
+El DHCP de VMware debe estar desactivado en VMnet1-VMnet4 sin excepción.
+El direccionamiento lo gestiona OPNsense.
+
+\*\*Paso 0.3 --- Descargar las 3 ISOs\*\*
+
+\- \`OPNsense-24.x-OpenSSL-dvd-amd64.iso\` → opnsense.org/download
+
+\- \`Rocky-9.x-x86_64-minimal.iso\` → rockylinux.org/download
+
+\- \`ubuntu-22.04.x-live-server-amd64.iso\` → ubuntu.com/download/server
+
+\*\*Paso 0.4 --- Crear las 5 VMs\*\*
+
+Crear todas las VMs ahora con \*\*File → New Virtual Machine\*\*, pero
+sin arrancar ninguna todavía. Usar los parámetros exactos de la tabla
+anterior. El orden de creación no importa, pero el orden de arranque sí.
+
+\-\--
+
+\## FASE 1 --- VM-01: OPNsense (debe ser la primera VM operativa)
+
+OPNsense es el gateway de todas las VLANs. Sin él ninguna otra VM tiene
+red.
+
+\*\*Paso 1.1 --- Instalar OPNsense\*\*
+
+Arrancar VM-01 con la ISO. El instalador arranca en modo live.
+Seleccionar:
+
+\- Opción \`Install\` en el menú
+
+\- Sistema de ficheros: \`UFS\`
+
+\- Disco destino: el único disco virtual disponible
+
+\- Confirmar y esperar la instalación (\~5 minutos)
+
+\- Retirar la ISO y reiniciar
+
+\*\*Paso 1.2 --- Asignar interfaces desde consola\*\*
+
+Al arrancar OPNsense por primera vez aparece el menú de consola.
+Seleccionar opción \`1\` (Assign interfaces):
+
+\`\`\`
+
+Do you want to configure LANs? \[y/N\]: y
+
+Enter the WAN interface name: vtnet0 → VMnet0 (Internet)
+
+Enter the LAN interface name: vtnet1 → VMnet1 (VLAN 10 Clientes)
+
+Enter optional interface (or ENTER): vtnet2 → VMnet2 (VLAN 20
+Servidores)
+
+Enter optional interface (or ENTER): vtnet3 → VMnet3 (VLAN 30 DMZ)
+
+Enter optional interface (or ENTER): vtnet4 → VMnet4 (VLAN 99 Gestión)
+
+Enter optional interface (or ENTER): \[ENTER para terminar\]
+
+\`\`\`
+
+El orden vtnet0-vtnet4 depende del orden en que añadiste las NICs al
+crear la VM. Si el resultado no coincide con lo esperado, reasignar
+desde este mismo menú.
+
+\*\*Paso 1.3 --- Asignar IP a VLAN 99 desde consola\*\*
+
+Seleccionar opción \`2\` (Set interface IP address) → seleccionar \`OPT3
+(vtnet4)\`:
+
+\`\`\`
+
+Configure IPv4 via DHCP: n
+
+Enter IPv4 address: 10.10.99.1
+
+Subnet bit count: 24
+
+Gateway: \[ENTER --- no gateway en interfaces internas\]
+
+Configure IPv6: n
+
+Enable DHCP server: n
+
+\`\`\`
+
+Esto permite acceder a la WebUI desde el host en \`https://10.10.99.1\`.
+El host necesita una IP en la red 10.10.99.0/24 para acceder --- VMware
+Host-only lo gestiona automáticamente asignando una IP al adaptador
+virtual del host en esa red.
+
+\*\*Paso 1.4 --- Acceder a la WebUI y configurar el resto de
+interfaces\*\*
+
+Desde el navegador del host: \`https://10.10.99.1\` --- usuario
+\`root\`, contraseña \`opnsense\` (cambiarla en el primer acceso).
+
+Ir a \*\*Interfaces → Assignments\*\* y configurar:
+
+\| Interfaz OPNsense \| VMnet \| IP \| Función \|
+
+\|\-\--\|\-\--\|\-\--\|\-\--\|
+
+\| WAN (vtnet0) \| VMnet0 \| DHCP router doméstico \| Salida Internet \|
+
+![](media/image1.png){width="7.268055555555556in"
+height="1.9256944444444444in"}
+
+![](media/image2.png){width="7.268055555555556in"
+height="3.689583333333333in"}
+
+![](media/image3.png){width="7.268055555555556in"
+height="3.686111111111111in"}
+
+![](media/image4.png){width="7.268055555555556in"
+height="2.301388888888889in"}
+
+![](media/image5.png){width="7.268055555555556in"
+height="2.3534722222222224in"}
+
+![](media/image6.png){width="7.268055555555556in"
+height="2.1847222222222222in"}
+
+![](media/image7.png){width="7.268055555555556in"
+height="1.7909722222222222in"}
+
+\| LAN (vtnet1) \| VMnet1 \| 10.10.10.1/24 \| VLAN 10 Clientes \|
+
+![](media/image8.png){width="7.268055555555556in"
+height="3.066666666666667in"}
+
+![](media/image9.png){width="7.268055555555556in"
+height="2.002083333333333in"}
+
+![](media/image10.png){width="7.268055555555556in"
+height="2.1659722222222224in"}
+
+\| OPT1 (vtnet2) \| VMnet2 \| 10.10.20.1/24 \| VLAN 20 Servidores \|
+
+![](media/image11.png){width="7.268055555555556in"
+height="3.6166666666666667in"}
+
+![](media/image12.png){width="7.268055555555556in"
+height="3.5215277777777776in"}
+
+\| OPT2 (vtnet3) \| VMnet3 \| 10.10.30.1/24 \| VLAN 30 DMZ \|
+
+![](media/image13.png){width="7.268055555555556in"
+height="3.634027777777778in"}
+
+![](media/image14.png){width="7.268055555555556in" height="3.44375in"}
+
+\| OPT3 (vtnet4) \| VMnet4 \| 10.10.99.1/24 \| VLAN 99 Gestión \|
+
+![](media/image15.png){width="7.268055555555556in"
+height="3.6506944444444445in"}
+
+![](media/image16.png){width="7.268055555555556in"
+height="3.4368055555555554in"}
+
+Para cada interfaz: habilitarla, asignar IP estática, guardar y aplicar
+cambios.
+
+\*\*Paso 1.5 --- Crear reglas de firewall\*\*
+
+![](media/image17.png){width="7.268055555555556in"
+height="3.9069444444444446in"}
+
+![](media/image18.png){width="7.268055555555556in"
+height="3.6798611111111112in"}
+
+![](media/image19.png){width="7.268055555555556in"
+height="3.682638888888889in"}
+
+En \*\*Firewall → Rules\*\*, crear las reglas en cada interfaz. OPNsense
+bloquea todo por defecto --- solo añadir permisos explícitos:
+
+\`\`\`
+
+\# Reglas VLAN 10 (LAN)
+
+Pass \| TCP \| 10.10.10.0/24 → 10.10.20.10 \| Puerto 389,636,88 →
+FreeIPA LDAP/Kerberos
+
+Pass \| TCP \| 10.10.10.0/24 → 10.10.20.20 \| Puerto 1514,1515 → Wazuh
+agentes
+
+Pass \| TCP \| 10.10.10.0/24 → any \| Puerto 80,443 → Navegación web
+
+Block\| any \| 10.10.10.0/24 → 10.10.99.0/24 \| any → VLAN10 no accede a
+MGMT
+
+![](media/image20.png){width="7.268055555555556in"
+height="4.373611111111111in"}
+
+\# Reglas VLAN 99 (Gestión)
+
+Pass \| TCP \| 10.10.99.0/24 → 10.10.20.0/24 \| Puerto 443,55000,22 →
+Admin WebUIs+SSH
+
+Pass \| TCP \| 10.10.99.0/24 → 10.10.10.0/24 \| any → Admin accede a LAN
+
+Pass \| ICMP \| 10.10.99.0/24 → any \| --- → ping diagnóstico
+
+![](media/image21.png){width="7.268055555555556in"
+height="4.347222222222222in"}
+
+\# Reglas syslog
+
+Pass \| UDP \| 10.10.20.1 → 10.10.20.20 \| Puerto 514 → OPNsense→Wazuh
+
+Pass \| UDP \| 10.10.20.1 → 10.10.20.30 \| Puerto 514 → OPNsense→Rsyslog
+
+![](media/image22.png){width="7.268055555555556in"
+height="4.342361111111111in"}
+
+**Paso 1.6 --- Configurar NAT**
+
+En **Firewall → NAT → Outbound**: seleccionar modo Automatic para que
+todas las VLANs internas salgan a Internet a través de la IP WAN de
+OPNsense.
+
+![](media/image23.png){width="7.268055555555556in"
+height="4.3493055555555555in"}
+
+**Paso 1.7 --- Activar Suricata IDS/IPS**
+
+En **Services → Intrusion Detection**:
+
+-   Activar: enabled ✓, IPS mode ✓
+
+-   Interfaces: seleccionar LAN (vtnet1) y OPT1 (vtnet2)
+
+![](media/image24.png){width="7.268055555555556in"
+height="4.3597222222222225in"}
+
+-   Descargar reglas: seleccionar ET Open (Emerging Threats Open)
+
+-   Aplicar y descargar el ruleset (\~2-3 minutos)
+
+![](media/image25.png){width="7.268055555555556in"
+height="4.338888888888889in"}
+
+Verificar desde consola OPNsense:
+
+bash
+
+suricatasc -c /var/run/suricata/suricata-command.socket
+
+\>\>\> version
+
+{\"message\": \"7.0.x RELEASE\", \"return\": \"OK\"}
+
+\`\`\`
+
+![](media/image26.png){width="7.268055555555556in"
+height="4.354166666666667in"}
+
+\*\*Paso 1.8 --- Configurar WireGuard VPN\*\*
+
+En \*\*VPN → WireGuard → Local\*\*:
+
+\`\`\`
+
+Name: wg_admin
+
+Listen Port: 51820
+
+Tunnel Address: 10.10.200.1/24
+
+DNS Servers: 10.10.20.10 ← FreeIPA (se configura después, apuntarlo
+ahora)
+
+En **VPN → WireGuard → Peers** añadir el cliente administrador con su
+clave pública. La clave pública se genera en el equipo cliente:
+
+bash
+
+wg genkey \| tee privatekey \| wg pubkey \> publickey
+
+\`\`\`
+
+![](media/image27.png){width="7.268055555555556in" height="4.36875in"}
+
+![](media/image28.png){width="7.268055555555556in"
+height="4.345833333333333in"}
+
+\*\*Paso 1.9 --- Configurar syslog remoto\*\*
+
+En \*\*System → Settings → Logging → Remote syslog servers\*\*:
+
+\`\`\`
+
+Server: 10.10.20.20 Port: 514 Protocol: UDP → Wazuh
+
+Server: 10.10.20.30 Port: 514 Protocol: UDP → Rsyslog
+
+Guardar. Esta configuración se activa sola en cuanto VM-03 y VM-04 estén
+operativas.
+
+![](media/image29.png){width="7.268055555555556in" height="4.34375in"}
+
+**Verificación de Fase 1:** desde VM-01 consola, hacer ping a 8.8.8.8.
+Debe responder.
+
+![](media/image30.png){width="7.251011592300962in"
+height="1.9690244969378827in"}
+
+**FASE 2 --- VM-02: FreeIPA (identidad y DNS del dominio)**
+
+  --------------------------------------------------------------------------
+  **Parámetro**   **Valor**
+  --------------- ----------------------------------------------------------
+  **SO**          Rocky Linux 9 minimal
+
+  **CPU**         2 vCPUs
+
+  **RAM**         2 GB
+
+  **Disco**       30 GB
+
+  **Red**         VMnet2 (VLAN20 Servidores) + VMnet4 (VLAN99 Gestión)
+
+  **IP**          10.10.20.10/24
+  --------------------------------------------------------------------------
+
+Aquí tienes la Fase 2 completa, contrastada con el TFG, sin fricciones
+ocultas:
+
+**FASE 2 --- VM-02: FreeIPA**
+
+**Paso 2.1 --- Instalación de Rocky Linux 9 minimal**
+
+Durante el instalador gráfico configura esto antes de terminar:
+
+-   **Destino** → disco virtual
+
+-   **Red** → activa la interfaz y configura:
+
+    -   IP: 10.10.20.10/24
+
+    -   Gateway: 10.10.20.1
+
+    -   DNS: 127.0.0.1
+
+    -   Hostname: freeipa.lab.techsecure.local
+
+-   **Contraseña root** → segura, anótala
+
+-   Instalar y reiniciar
+
+**Paso 2.2 --- Preparación obligatoria antes de FreeIPA**
+
+Entra como root y ejecuta en este orden exacto:
+
+\# Confirmar hostname correcto --- debe devolver el FQDN completo
+
+hostname -f
+
+\# Debe mostrar: freeipa.lab.techsecure.local
+
+![](media/image31.png){width="7.268055555555556in"
+height="1.332638888888889in"}
+
+\# Verificar nombre de interfaz de red
+
+ip a
+
+\# Anotar el nombre de la interfaz --- puede ser ens160, ens18, eth0
+
+![](media/image32.png){width="7.268055555555556in"
+height="2.4763888888888888in"}
+
+\# Añadir entrada en /etc/hosts --- obligatorio para el instalador
+
+echo \"10.10.20.10 freeipa.lab.techsecure.local freeipa\" \>\>
+/etc/hosts
+
+\# Verificar que quedó bien
+
+cat /etc/hosts \| grep freeipa
+
+![](media/image33.png){width="7.268055555555556in"
+height="0.7381944444444445in"}
+
+\# Abrir puertos en firewalld --- Rocky 9 lo trae activo
+
+firewall-cmd \--permanent \--add-service=freeipa-ldap
+
+firewall-cmd \--permanent \--add-service=freeipa-ldaps
+
+firewall-cmd \--permanent \--add-service=kerberos
+
+firewall-cmd \--permanent \--add-service=dns
+
+firewall-cmd \--permanent \--add-service=http
+
+firewall-cmd \--permanent \--add-service=https
+
+firewall-cmd --reload
+
+![](media/image34.png){width="7.268055555555556in"
+height="2.4569444444444444in"}
+
+\# Verificar conectividad con OPNsense y con Internet
+
+ping -c 2 10.10.20.1
+
+ping -c 2 8.8.8.8
+
+**Paso 2.3 --- Instalar FreeIPA**
+
+\# Instalar paquetes --- tarda 10-15 minutos, no interrumpir
+
+dnf install -y ipa-server ipa-server-dns
+
+\# Lanzar el instalador --- tarda 5-10 minutos, no interrumpir
+
+ipa-server-install \\
+
+\--realm=LAB.TECHSECURE.LOCAL \\
+
+\--domain=lab.techsecure.local \\
+
+\--ds-password=\'TuContraseñaSegura\' \\
+
+\--admin-password=\'TuContraseñaSegura\' \\
+
+\--setup-dns \\
+
+\--forwarder=8.8.8.8 \\
+
+\--no-ntp \\
+
+\--skip-mem-check -U
+
+![](media/image35.png){width="7.268055555555556in"
+height="1.582638888888889in"}
+
+Resultado esperado al final:
+
+\`\`\`
+
+Setup complete!
+
+The ipa-client-install command was successful
+
+![](media/image36.png){width="7.268055555555556in"
+height="1.3194444444444444in"}
+
+📸 **Captura V-06a** --- pantalla final con Setup complete! y la URL de
+acceso a la WebUI.
+
+**PASO 5 --- Cambiar DNS a FreeIPA**
+
+Una vez instalado, FreeIPA es ahora el DNS del dominio. Cambiar:
+
+\# Sustituir ens160 por el nombre de tu interfaz
+
+nmcli con mod ens160 ipv4.dns 127.0.0.1
+
+nmcli con up ens160
+
+\# Verificar que resuelve el dominio correctamente
+
+host freeipa.lab.techsecure.local
+
+\# Debe devolver: freeipa.lab.techsecure.local has address 10.10.20.10
+
+**Paso 2.4 --- Crear usuarios, grupos y políticas**
+
+\# Autenticarse como admin Kerberos
+
+kinit admin
+
+\# Crear los 4 usuarios
+
+ipa user-add admin_ztlab \--first=Admin \--last=ZTLab \--password
+\--shell=/bin/bash
+
+ipa user-add soc_analyst \--first=SOC \--last=Analyst \--password
+\--shell=/bin/bash
+
+ipa user-add sysadmin \--first=Sys \--last=Admin \--password
+\--shell=/bin/bash
+
+ipa user-add user_test \--first=Test \--last=User \--password
+\--shell=/bin/bash
+
+![](media/image37.png){width="7.268055555555556in"
+height="5.472916666666666in"}
+
+\# Crear los 3 grupos
+
+ipa group-add admins \--desc=\'Administradores del sistema\'
+
+ipa group-add soc_team \--desc=\'Equipo SOC analistas\'
+
+ipa group-add sysadmins \--desc=\'Administradores de sistemas\'
+
+![](media/image38.png){width="7.268055555555556in"
+height="3.191666666666667in"}
+
+\# Asignar usuarios a grupos
+
+ipa group-add-member admins \--users=admin_ztlab
+
+ipa group-add-member soc_team \--users=soc_analyst
+
+ipa group-add-member sysadmins \--users=sysadmin
+
+![](media/image39.png){width="7.268055555555556in"
+height="3.2888888888888888in"}
+
+\# Política de contraseñas ENS categoría MEDIA
+
+ipa pwpolicy-mod global_policy \\
+
+\--minlength=12 \\
+
+\--minclasses=3 \\
+
+\--history=10 \\
+
+\--maxlife=90
+
+![](media/image40.png){width="7.268055555555556in"
+height="1.6145833333333333in"}
+
+\# HBAC --- solo sysadmins acceden por SSH a los servidores
+
+ipa hbacrule-add allow_ssh_sysadmins
+
+ipa hbacrule-add-service allow_ssh_sysadmins \--hbacsvcs=sshd
+
+ipa hbacrule-add-user allow_ssh_sysadmins \--groups=sysadmins
+
+ipa hbacrule-add-host allow_ssh_sysadmins
+\--hosts=wazuh.lab.techsecure.local
+
+![](media/image41.png){width="7.268055555555556in"
+height="3.917361111111111in"}
+
+**Paso 2.5 --- Verificación**
+
+\# Verificar los 4 usuarios creados
+
+ipa user-find
+
+\# Debe devolver 4 usuarios
+
+\# Verificar acceso a WebUI desde VM-gestion
+
+\# Navegar a https://10.10.20.10
+
+\# Login con admin y la contraseña configurada
+
+📸 **Captura V-06b** --- WebUI de FreeIPA con los 4 usuarios visibles y
+estado activo.
+
+**Advertencia sobre el nombre de interfaz:** en Rocky Linux 9 la
+interfaz de red puede llamarse ens18, eth0 o enp0s3 dependiendo de cómo
+VMware la detecte. Antes del Paso 2.2 ejecuta ip a para confirmar el
+nombre exacto y sustituye ens18 por el que veas.
+
+**FASE 3 --- VM-03: Wazuh AIO (SIEM)**
+
+**Paso 3.1 --- Instalar Ubuntu Server 22.04**
+
+Arrancar VM-03 con la ISO de Ubuntu Server. Durante la instalación:
+
+-   Configurar red: IP 10.10.20.20/24, gateway 10.10.20.1, DNS
+    10.10.20.10 (FreeIPA)
+
+-   Hostname: wazuh
+
+-   Instalar OpenSSH server: sí
+
+-   Sin paquetes adicionales
+
+-   Reiniciar
+
+**Paso 3.2 --- Preparación del sistema**
+
+bash
+
+apt update && apt install -y docker.io docker-compose-v2 curl git
+
+systemctl enable \--now docker
+
+**Paso 3.3 --- Corrección H-03 obligatoria antes de arrancar el stack**
+
+Este paso debe hacerse antes de lanzar Docker o el contenedor indexer
+fallará:
+
+bash
+
+sysctl -w vm.max_map_count=262144
+
+echo \'vm.max_map_count=262144\' \>\> /etc/sysctl.conf
+
+**Paso 3.4 --- Clonar repositorio y generar certificados TLS**
+
+bash
+
+git clone https://github.com/wazuh/wazuh-docker.git -b v4.7.5
+
+cd wazuh-docker/single-node
+
+\# Generar certificados TLS entre los componentes
+
+docker-compose -f generate-indexer-certs.yml run \--rm generator
+
+\# Salida esperada: Generating Certificates\... Done!
+
+**Paso 3.5 --- Ajustar memoria del Indexer en docker-compose.yml**
+
+Editar el fichero docker-compose.yml y localizar la sección
+wazuh.indexer. Cambiar la línea de memoria:
+
+yaml
+
+environment:
+
+OPENSEARCH_JAVA_OPTS: \'-Xms2g -Xmx2g\' \# Reducido de 4 GB a 2 GB para
+el laboratorio
+
+**Paso 3.6 --- Arrancar el stack**
+
+bash
+
+docker-compose up -d
+
+Esperar 2-3 minutos y verificar:
+
+bash
+
+docker ps \--format \'table {{.Names}}\\t{{.Status}}\'
+
+Los tres contenedores deben mostrar (healthy). Si alguno muestra
+starting esperar otro minuto. Si muestra unhealthy revisar docker logs
+\<nombre_contenedor\>.
+
+**Paso 3.7 --- Configurar recepción syslog y reglas personalizadas**
+
+Editar ossec.conf dentro del contenedor:
+
+bash
+
+docker exec -it single-node-wazuh.manager-1 bash
+
+vi /var/ossec/etc/ossec.conf
+
+Añadir dentro de \<ossec_config\>:
+
+xml
+
+\<!\-- Recepción syslog desde OPNsense \--\>
+
+\<remote\>
+
+\<connection\>syslog\</connection\>
+
+\<port\>514\</port\>
+
+\<protocol\>udp\</protocol\>
+
+\<allowed-ips\>10.10.20.1\</allowed-ips\>
+
+\</remote\>
+
+Crear fichero de reglas personalizadas:
+
+bash
+
+vi /var/ossec/ruleset/rules/local_rules.xml
+
+xml
+
+\<group name=\"local,\"\>
+
+\<!\-- Regla 100001: Fuerza bruta SSH \--\>
+
+\<rule id=\"100001\" level=\"10\" frequency=\"5\" timeframe=\"60\"\>
+
+\<if_matched_sid\>5760\</if_matched_sid\>
+
+\<description\>Ataque de fuerza bruta SSH detectado\</description\>
+
+\<group\>authentication_failures,pci_dss_10.2.4,\</group\>
+
+\</rule\>
+
+\<!\-- Regla 100002: Escaneo de puertos \--\>
+
+\<rule id=\"100002\" level=\"8\" frequency=\"50\" timeframe=\"10\"\>
+
+\<if_matched_sid\>40101\</if_matched_sid\>
+
+\<description\>Posible escaneo de puertos detectado\</description\>
+
+\</rule\>
+
+\</group\>
+
+Reiniciar el Manager:
+
+bash
+
+docker exec single-node-wazuh.manager-1 /var/ossec/bin/ossec-control
+restart
+
+**Verificación de Fase 3:** acceder a https://10.10.20.20 desde el host.
+El Dashboard de Wazuh debe cargarse.
+
+**FASE 4 --- VM-04: Rsyslog + MariaDB**
+
+**Paso 4.1 --- Instalar Ubuntu Server 22.04**
+
+Igual que VM-03 pero con:
+
+-   IP: 10.10.20.30/24, gateway 10.10.20.1, DNS 10.10.20.10
+
+-   Hostname: logsbd
+
+**Paso 4.2 --- Instalar Docker**
+
+bash
+
+apt update && apt install -y docker.io docker-compose-v2
+
+systemctl enable \--now docker
+
+![](media/image42.png){width="7.268055555555556in" height="2.50625in"}
+
+**Paso 4.3 --- Crear el docker-compose.yml de MariaDB**
+
+mkdir -p /opt/mariadb-logs && cd /opt/mariadb-logs
+
+Crear el fichero .env con las contraseñas (nunca en texto plano en el
+compose):
+
+cat \> .env \<\< \'EOF\'
+
+MYSQL_ROOT_PASSWORD=contraseña_root_segura
+
+MYSQL_RSYSLOG_PASSWORD=contraseña_rsyslog_segura
+
+EOF
+
+chmod 600 .env
+
+![](media/image43.png){width="7.268055555555556in" height="1.19375in"}
+
+Crear docker-compose.yml:
+
+yaml
+
+version: \'3.9\'
+
+services:
+
+mariadb:
+
+image: mariadb:10.11
+
+container_name: mariadb-logs
+
+restart: always
+
+environment:
+
+MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
+
+MYSQL_DATABASE: siem_logs
+
+MYSQL_USER: rsyslog
+
+MYSQL_PASSWORD: \${MYSQL_RSYSLOG_PASSWORD}
+
+ports:
+
+\- \'127.0.0.1:3306:3306\' \# Solo localhost
+
+volumes:
+
+\- mariadb_data:/var/lib/mysql
+
+\- ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+healthcheck:
+
+test: \[\"CMD\", \"healthcheck.sh\", \"\--connect\",
+\"\--innodb_initialized\"\]
+
+interval: 30s
+
+timeout: 10s
+
+retries: 3
+
+volumes:
+
+mariadb_data:
+
+![](media/image44.png){width="7.268055555555556in"
+height="3.9770833333333333in"}
+
+**Paso 4.4 --- Crear el fichero init.sql con el esquema**
+
+cat \> /opt/mariadb-logs/init.sql \<\< \'EOF\'
+
+CREATE TABLE IF NOT EXISTS equipos (
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+nombre VARCHAR(100), ip VARCHAR(45), tipo VARCHAR(50)
+
+);
+
+CREATE TABLE IF NOT EXISTS fuentes (
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+nombre VARCHAR(100)
+
+);
+
+CREATE TABLE IF NOT EXISTS severidades (
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+nivel VARCHAR(20)
+
+);
+
+CREATE TABLE IF NOT EXISTS reglas (
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+sid INT, descripcion VARCHAR(255)
+
+);
+
+CREATE TABLE IF NOT EXISTS eventos (
+
+id INT AUTO_INCREMENT PRIMARY KEY,
+
+fecha DATETIME,
+
+equipo_id INT, fuente_id INT, severidad_id INT, regla_id INT,
+
+mensaje TEXT,
+
+FOREIGN KEY (equipo_id) REFERENCES equipos(id),
+
+FOREIGN KEY (fuente_id) REFERENCES fuentes(id),
+
+FOREIGN KEY (severidad_id) REFERENCES severidades(id),
+
+FOREIGN KEY (regla_id) REFERENCES reglas(id)
+
+);
+
+EOF
+
+![](media/image45.png){width="7.268055555555556in"
+height="3.6798611111111112in"}
+
+**Paso 4.5 --- Arrancar MariaDB**
+
+bash
+
+docker compose up -d
+
+\# Verificar
+
+docker ps \--format \'table {{.Names}}\\t{{.Status}}\'
+
+\# mariadb-logs Up 30 seconds (healthy)
+
+![](media/image46.png){width="7.268055555555556in"
+height="3.046527777777778in"}
+
+**Paso 4.6 --- Crear usuario analyst**
+
+bash
+
+docker exec -i mariadb-logs mysql -uroot -p\${MYSQL_ROOT_PASSWORD} \\
+
+-e \"CREATE USER \'analyst\'@\'10.10.99.%\' IDENTIFIED BY
+\'contraseña_analyst_segura\';
+
+GRANT SELECT ON siem_logs.\* TO \'analyst\'@\'10.10.99.%\';
+
+FLUSH PRIVILEGES;\"
+
+![](media/image47.png){width="7.268055555555556in"
+height="0.8743055555555556in"}
+
+**Paso 4.7 --- Instalar Rsyslog con módulo ommysql**
+
+Este paso es crítico. El módulo no viene instalado por defecto en Ubuntu
+22.04:
+
+bash
+
+apt install -y rsyslog rsyslog-mysql
+
+\`\`\`
+
+![](media/image48.png){width="7.268055555555556in"
+height="1.9479166666666667in"}
+
+Editar \`/etc/rsyslog.conf\` --- añadir al inicio:
+
+\`\`\`
+
+module(load=\"imudp\")
+
+input(type=\"imudp\" port=\"514\")
+
+module(load=\"imtcp\")
+
+input(type=\"imtcp\" port=\"514\")
+
+\`\`\`
+
+![](media/image49.png){width="7.268055555555556in"
+height="2.172222222222222in"}
+
+Crear \`/etc/rsyslog.d/30-mysql.conf\`:
+
+\`\`\`
+
+module(load=\"ommysql\")
+
+template(name=\"mysql_insert\" type=\"string\"
+
+string=\"INSERT INTO eventos (fecha, equipo_id, fuente_id, severidad_id,
+mensaje)
+
+VALUES (NOW(),
+
+(SELECT id FROM equipos WHERE nombre=\'%HOSTNAME%\' LIMIT 1),
+
+(SELECT id FROM fuentes WHERE nombre=\'%syslogtag%\' LIMIT 1),
+
+(SELECT id FROM severidades WHERE nivel=\'%syslogseverity-text%\' LIMIT
+1),
+
+\'%msg%\')\")
+
+\*.\* action(type=\"ommysql\"
+
+server=\"127.0.0.1\"
+
+db=\"siem_logs\"
+
+uid=\"rsyslog\"
+
+pwd=\"contraseña_rsyslog_segura\"
+
+template=\"mysql_insert\")
+
+![](media/image50.png){width="7.268055555555556in" height="2.38125in"}
+
+bash
+
+systemctl restart rsyslog
+
+systemctl status rsyslog \# Debe mostrar active (running)
+
+![](media/image51.png){width="7.268055555555556in"
+height="2.3631944444444444in"}
+
+**Paso 4.8 --- Configurar scripts de purga y backup**
+
+bash
+
+\# Script purga RGPD
+
+cat \> /usr/local/bin/purga_rgpd.sh \<\< \'EOF\'
+
+#!/bin/bash
+
+FECHA=\$(date +%Y%m%d\_%H%M%S)
+
+docker exec mariadb-logs mysql -ursyslog -pCONTRASEÑA siem_logs \\
+
+-e \"DELETE FROM eventos WHERE fecha \< NOW() - INTERVAL 365 DAY;\"
+
+echo \"\[\${FECHA}\] Purga RGPD ejecutada\" \>\> /var/log/purga_rgpd.log
+
+EOF
+
+![](media/image52.png){width="7.268055555555556in"
+height="1.270138888888889in"}
+
+\# Script backup diario
+
+cat \> /usr/local/bin/backup_siem.sh \<\< \'EOF\'
+
+#!/bin/bash
+
+FECHA=\$(date +%Y%m%d\_%H%M%S)
+
+DESTINO=\'/var/backups/siem\'
+
+mkdir -p \${DESTINO}
+
+docker exec mariadb-logs mysqldump -uroot -pCONTRASEÑA siem_logs \\
+
+\| gzip \> \${DESTINO}/siem_logs\_\${FECHA}.sql.gz
+
+find \${DESTINO} -name \'\*.sql.gz\' -mtime +30 -delete
+
+echo \"\[\${FECHA}\] Backup completado\" \>\> /var/log/backup_siem.log
+
+EOF
+
+chmod +x /usr/local/bin/purga_rgpd.sh /usr/local/bin/backup_siem.sh
+
+![](media/image53.png){width="7.268055555555556in"
+height="1.7826388888888889in"}
+
+\# Registrar en cron
+
+echo \'0 1 \* \* \* root /usr/local/bin/purga_rgpd.sh\' \>\>
+/etc/crontab
+
+echo \'0 2 \* \* \* root /usr/local/bin/backup_siem.sh\' \>\>
+/etc/crontab
+
+![](media/image54.png){width="7.268055555555556in"
+height="0.40902777777777777in"}
+
+\# Verificar backup manualmente
+
+/usr/local/bin/backup_siem.sh
+
+ls -lh /var/backups/siem/
+
+![](media/image55.png){width="7.268055555555556in"
+height="0.8131944444444444in"}
+
+**Verificación de Fase 4:** esperar 5 minutos y ejecutar:
+
+bash
+
+docker exec mariadb-logs mysql -ursyslog -p siem_logs \\
+
+-e \'SELECT COUNT(\*) FROM eventos;\'
+
+Debe devolver un número mayor que 0.
+
+**FASE 5 --- VM-05: Cliente Ubuntu (agente Wazuh + dominio)**
+
+**Paso 5.1 --- Instalar Ubuntu Server 22.04**
+
+-   IP: 10.10.10.10/24, gateway 10.10.10.1, DNS 10.10.20.10
+
+-   Hostname: cliente
+
+**Paso 5.2 --- Unir al dominio FreeIPA**
+
+apt install -y freeipa-client
+
+![](media/image56.png){width="7.268055555555556in" height="3.05in"}
+
+ipa-client-install \\
+
+\--server=freeipa.lab.techsecure.local \\
+
+\--domain=lab.techsecure.local \\
+
+\--realm=LAB.TECHSECURE.LOCAL \\
+
+\--principal=admin \\
+
+\--password=\'\[CONTRASEÑA_ADMIN_FREEIPA\]\' -U
+
+Verificar login con usuario de dominio:
+
+bash
+
+ssh soc_analyst@10.10.20.20
+
+\# Debe autenticarse con credenciales FreeIPA
+
+![](media/image57.png){width="7.268055555555556in" height="4.11875in"}
+
+**Paso 5.3 --- Instalar agente Wazuh**
+
+curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH \| \\
+
+gpg \--no-default-keyring \\
+
+\--keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg \--import
+
+![](media/image58.png){width="7.268055555555556in"
+height="1.2229166666666667in"}
+
+echo \'deb \[signed-by=/usr/share/keyrings/wazuh.gpg\] \\
+
+https://packages.wazuh.com/4.x/apt/ stable main\' \| \\
+
+tee /etc/apt/sources.list.d/wazuh.list
+
+![](media/image59.png){width="7.268055555555556in"
+height="0.4847222222222222in"}
+
+apt update && apt install -y wazuh-agent
+
+![](media/image60.png){width="7.268055555555556in"
+height="3.1618055555555555in"}
+
+\# Apuntar al Manager
+
+sed -i \'s/MANAGER_IP/10.10.20.20/\' /var/ossec/etc/ossec.conf
+
+\# Registrar el agente
+
+/var/ossec/bin/agent-auth -m 10.10.20.20 -A cliente-ubuntu
+
+\# Debe responder: Agent registered with ID \'001\'
+
+systemctl enable \--now wazuh-agent
+
+![](media/image61.png){width="7.268055555555556in" height="1.30625in"}
+
+**Verificación desde VM-03:**
+
+bash
+
+docker exec single-node-wazuh.manager-1 /var/ossec/bin/agent_control -l
+
+\# ID: 001, Name: cliente-ubuntu, IP: 10.10.10.10, Status: Active
+
+![](media/image62.png){width="7.268055555555556in"
+height="1.2791666666666666in"}
+
+**FASE 6 --- VERIFICACIÓN END-TO-END**
+
+Con todo instalado, verificar el flujo completo en este orden:
+
+**Prueba 1 --- NAT y conectividad Internet:**
+
+bash
+
+\# Desde VM-05
+
+curl -I https://www.google.com
+
+\# Debe responder HTTP/2 200
+
+**Prueba 2 --- Firewall deny-by-default:**
+
+bash
+
+\# Desde VM-05 --- debe ser bloqueado
+
+curl http://10.10.99.1
+
+\# Debe fallar: curl: (6) Could not resolve host
+
+**Prueba 3 --- Alerta Wazuh en tiempo real:**
+
+bash
+
+\# Desde VM-05
+
+ssh usuarioinvalido@10.10.20.20
+
+\# Desde VM-03 verificar alerta
+
+docker exec single-node-wazuh.manager-1 \\
+
+tail -f /var/ossec/logs/alerts/alerts.log \| grep \'authentication\'
+
+**Prueba 4 --- Logs llegando a MariaDB:**
+
+bash
+
+\# Desde VM-04 --- esperar 2-3 minutos de tráfico
+
+docker exec mariadb-logs mysql -uroot -p siem_logs \\
+
+-e \'SELECT COUNT(\*) as total FROM eventos;\'
+
+\# Debe ser mayor que 0
+
+**TABLA RESUMEN --- ORDEN ESTRICTO**
+
+  --------------------------------------------------------------------------------
+  **Fase**   **VM**         **Debe estar         **Motivo**
+                            operativa antes**    
+  ---------- -------------- -------------------- ---------------------------------
+  0          Host           ---                  VMnets y ISOs necesarias para
+                                                 todo
+
+  1          VM-01 OPNsense Nada                 Gateway de todas las VLANs
+
+  2          VM-02 FreeIPA  VM-01                DNS del dominio necesario para
+                                                 VM-03/04/05
+
+  3          VM-03 Wazuh    VM-01 + VM-02        Necesita DNS y red VLAN 20
+
+  4          VM-04 Logs/BD  VM-01 + VM-02        Necesita DNS y red VLAN 20
+
+  5          VM-05 Cliente  VM-01 + VM-02 +      Necesita DNS, dominio y Manager
+                            VM-03                Wazuh
+
+  6          Verificación   Todo                 Flujo completo end-to-end
+  --------------------------------------------------------------------------------

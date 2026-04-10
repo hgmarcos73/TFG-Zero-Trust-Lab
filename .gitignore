@@ -1,0 +1,20 @@
+# Entorno
+.env
+*.swp
+*.swo
+*~
+
+# Docker
+mariadb_data/
+
+# Backups locales
+*.sql.gz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Certificados TLS (nunca subir claves privadas)
+*.key
+*.pem
+!README.md

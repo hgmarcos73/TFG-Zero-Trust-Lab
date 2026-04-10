@@ -1,0 +1,33 @@
+# docker-compose.yml — MariaDB 10.11 (VM-04)
+# VM-04 (Ubuntu Server 22.04 LTS) — 10.10.20.30
+# Ubicación: /opt/mariadb-logs/docker-compose.yml
+# Uso: docker compose up -d
+#
+# Rsyslog (nativo) conecta a 127.0.0.1:3306 vía módulo ommysql.
+# Las variables sensibles se definen en .env (nunca en texto plano).
+
+version: '3.9'
+
+services:
+  mariadb:
+    image: mariadb:10.11                        # Tag fijo — versión LTS verificada
+    container_name: mariadb-logs
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: siem_logs
+      MYSQL_USER: rsyslog                       # Usuario con solo INSERT en tabla eventos
+      MYSQL_PASSWORD: ${MYSQL_RSYSLOG_PASSWORD}
+    ports:
+      - '127.0.0.1:3306:3306'                   # Solo localhost — no expuesto a red VLAN
+    volumes:
+      - mariadb_data:/var/lib/mysql              # Persistencia de datos
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql   # Esquema siem_logs (Anexo C)
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mariadb_data:                                  # Volumen gestionado por Docker
