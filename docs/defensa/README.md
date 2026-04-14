@@ -9,6 +9,7 @@
 
 | Archivo | Descripción |
 |---|---|
+| [`PLANO_NUEVA_PRESENTACION.md`](PLANO_NUEVA_PRESENTACION.md) | Descripción exhaustiva de las 16 diapositivas: layout, textos, iconos, diagramas y speaker notes. |
 | [`GUION_VIDEO_DEMO.md`](GUION_VIDEO_DEMO.md) | Guion técnico del vídeo demostrativo: bloques, comandos exactos, layout de pantalla y tiempos. |
 | [`NARRACION_VOZ_EN_OFF.md`](NARRACION_VOZ_EN_OFF.md) | Texto íntegro de la narración para grabar como voz en off sobre el vídeo. Listo para leer. |
 | [`GUION_DEFENSA_ORAL.md`](GUION_DEFENSA_ORAL.md) | Estructura de la exposición oral (20 min), distribución por bloques y notas de oratoria. |
