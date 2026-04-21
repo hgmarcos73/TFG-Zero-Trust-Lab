@@ -1,4 +1,4 @@
-# Checklist — Grabación del vídeo y día de la defensa
+# Checklist — Grabación del vídeo, subida a Moodle y día de la defensa
 
 ---
 
@@ -78,44 +78,105 @@
 [ ] Verificar que se lee el terminal en una pantalla de portátil (simular proyector)
 ```
 
+### Extraer los 2 clips para la defensa en directo
+
+```text
+[ ] CLIP 1 — Hydra + active response (~90 s):
+      Desde el inicio de B4 (pantalla triple) hasta la verificación del bloqueo en iptables.
+      Exportar como fichero independiente: clip_pr03_hydra.mp4
+[ ] CLIP 2 — Segregación MariaDB (~60 s):
+      Desde el paso 7.3 (consulta analyst) hasta el paso 7.6 (error rsyslog SELECT).
+      Exportar como fichero independiente: clip_pr08_segregacion.mp4
+[ ] Reproducir ambos clips → confirmar que se leen bien y tienen audio
+```
+
 ---
 
-## PARTE 2: Día de la defensa
+## PARTE 2: Subida a Moodle
+
+### Tarea "Presentaciones y material de apoyo"
+
+Según las instrucciones del centro, hay que subir:
+
+```text
+[ ] 1. Índice de la exposición
+      → Exportar slide 2 del PPTX como PDF o imagen (indice_exposicion.pdf)
+
+[ ] 2. PPTX de 16 slides
+      → defensa_zerotrust_v2.pptx (o el nombre que le des)
+
+[ ] 3. Esquema gráfico del sistema
+      → Exportar slide 5 (diagrama de arquitectura) como imagen PNG
+      → También vale el diagrama del README.md del repo
+
+[ ] 4. Esquema de la base de datos
+      → Exportar el esquema siem_logs (5 tablas 3FN)
+      → Opción 1: captura de pantalla del modelo relacional
+      → Opción 2: el fichero init.sql del repositorio
+
+[ ] 5. Bibliografía
+      → Extraer la sección "Bibliografía" de la memoria (páginas 101-102 del PDF)
+      → Exportar como PDF independiente o incluir como última slide
+```
+
+### Tarea "Vídeos"
+
+```text
+[ ] 1. Subir el vídeo completo (~11 min) a una plataforma:
+      → YouTube (como "no listado") — opción recomendada
+      → Google Drive (compartir con enlace, acceso "cualquier persona con el enlace")
+      → OneDrive como alternativa
+
+[ ] 2. Copiar el enlace del vídeo
+
+[ ] 3. Pegar el enlace en la tarea de Moodle "Vídeos para las presentaciones"
+
+[ ] 4. Verificar que el enlace funciona desde otro navegador / modo incógnito
+```
+
+---
+
+## PARTE 3: Día de la defensa
 
 ### Material que llevar
 
 ```text
 [ ] Portátil con el PPTX cargado y probado
 [ ] Cable HDMI / adaptador para el proyector del aula
-[ ] Vídeo demostrativo en el portátil (no depender de Internet)
-[ ] Copia del vídeo en USB de backup
+[ ] Los 2 clips de vídeo en el portátil (clip_pr03_hydra.mp4 y clip_pr08_segregacion.mp4)
+[ ] Vídeo completo en el portátil como backup (por si piden verlo)
+[ ] Copia de todo en USB de emergencia
 [ ] Copia impresa de las speaker notes del PPTX
-[ ] Copia impresa de BANCO_PREGUNTAS_TRIBUNAL.md (por si acaso)
-[ ] Copia de la memoria (PDF) en el portátil por si el tribunal pide ver algo
+[ ] Copia impresa de BANCO_PREGUNTAS_TRIBUNAL.md
+[ ] Copia de la memoria (PDF) en el portátil por si piden ver algo
 [ ] Botella de agua
 ```
 
 ### Antes de entrar al aula
 
 ```text
+[ ] Llegar con antelación (puntualidad — lo pide el centro)
 [ ] Comprobar que el proyector funciona con el portátil
-[ ] Comprobar que los colores de las slides se ven bien (el navy oscuro puede comer texto)
+[ ] Comprobar que los colores del PPTX se ven bien proyectados
 [ ] Abrir el PPTX en modo presentación
-[ ] Tener el vídeo listo para reproducir (no buscar en carpetas durante la defensa)
+[ ] Tener los 2 clips preparados para reproducir (no buscar en carpetas)
+[ ] Probar el audio de los clips en el aula (si tienen narración)
 [ ] Silenciar el móvil
 ```
 
-### Durante la exposición
+### Durante la exposición (25 min máximo)
 
 ```text
-[ ] Esperar a que el presidente dé la palabra
+[ ] Esperar a que el profesorado dé la palabra
 [ ] Saludo breve: "Buenos días / buenas tardes. Gracias."
 [ ] No leer las slides — las slides son el esqueleto, tú pones la carne
 [ ] Hablar al tribunal, no a la pantalla
 [ ] Frases cortas, vocalizar, modular la voz
-[ ] Dar datos numéricos concretos (3 s, 42 s, 1847 eventos, 9/9 pruebas)
-[ ] Antes de proyectar el vídeo: "Con el permiso del tribunal..."
-[ ] Al terminar: "Con esto concluyo y quedo a disposición del tribunal."
+[ ] Dar datos numéricos concretos (3 s, 42 s, 1.847 eventos, 528:1)
+[ ] Antes de cada clip: "Voy a mostrar una grabación del laboratorio en funcionamiento."
+[ ] Si un clip falla: describir lo que se vería, con datos concretos. No entrar en pánico.
+[ ] Controlar el tiempo: ~1 min 30 s por slide, 2 clips de ~90 s y ~60 s
+[ ] Al terminar: "Con esto concluyo y quedo a disposición del profesorado."
 ```
 
 ### Durante las preguntas
@@ -127,5 +188,5 @@
 [ ] No polemizar, no justificar la justificación
 [ ] Agrupar si hacen varias preguntas seguidas
 [ ] Mantener el trato de "usted"
-[ ] Al terminar el turno: agradecer al tribunal
+[ ] Al terminar el turno: agradecer al profesorado
 ```
